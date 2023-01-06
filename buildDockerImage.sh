@@ -34,4 +34,4 @@ docker build  -f  ${LOCATION}/${DOCKER_FILE} -t ${DOCKER_REPO}/${NAME}:${VERSION
 sleep 1
 
 echo "Pushing the image to docker hub"
-docker push shubham192001/${NAME}:${VERSION}
+docker push ${DOCKER_REPO}/${NAME}:${VERSION}
