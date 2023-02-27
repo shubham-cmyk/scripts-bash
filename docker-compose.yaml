@@ -1,0 +1,43 @@
+version: "3"
+services:
+  redis-1 : 
+    container_name: master
+    image: redis
+    # ports:`
+    #   - 127.0.0.1:6379:6379
+    restart: always
+    networks:  
+      redis : 
+        ipv4_address: 10.5.1.4
+  redis-2 : 
+    container_name: slave1
+    image: redis
+    # ports:
+    #   - 127.0.0.1:6380:6379
+    restart: always
+    command : redis-cli slaveof 10.5.1.4 6379
+    networks:  
+      redis : 
+        ipv4_address: 10.5.1.2
+    depends_on:   
+      - redis-1
+  redis-3 : 
+    container_name: slave2
+    image: redis
+    # ports:
+    #   - 127.0.0.1:6380:6379
+    restart: always
+    command : redis-cli slaveof 10.5.1.4 6379
+    networks:  
+      redis : 
+        ipv4_address: 10.5.1.3
+    depends_on:   
+      - redis-1    
+
+networks:
+  redis:
+    driver: bridge
+    ipam:
+     config:
+       - subnet: 10.5.1.0/24
+    

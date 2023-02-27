@@ -1,0 +1,52 @@
+version: "3"
+services:
+  sentinel-1 : 
+    container_name: sentinel1
+    image:  shubham192001/redis-sentinel:v1latest
+    # ports:
+    #   - 127.0.0.1:6379:6379
+    restart: always
+    environment:  
+      MASTER_GROUP_NAME: mymaster
+      PORT: 6379
+      IP: 10.5.1.4
+      QUORUM: 2
+    networks:  
+      redis : 
+        ipv4_address: 10.5.1.12
+  sentinel-2 : 
+    container_name: sentinel2
+    image: shubham192001/redis-sentinel:v1latest
+    # ports:
+    #   - 127.0.0.1:6380:6379
+    restart: always
+    environment: 
+      MASTER_GROUP_NAME: mymaster
+      PORT: 6379
+      IP: 10.5.1.4
+      QUORUM: 2
+    networks:  
+      redis : 
+        ipv4_address: 10.5.1.11
+  sentinel-3 : 
+    container_name: sentinel3
+    image: shubham192001/redis-sentinel:v1latest
+    # ports:
+    #   - 127.0.0.1:6380:6379
+    restart: always
+    environment: 
+      MASTER_GROUP_NAME: mymaster
+      PORT: 6379
+      IP: 10.5.1.4
+      QUORUM: 2
+    networks:  
+      redis : 
+        ipv4_address: 10.5.1.10
+
+networks:
+  redis:
+    driver: bridge
+    ipam:
+     config:
+       - subnet: 10.5.1.0/24
+    
