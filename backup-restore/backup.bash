@@ -22,8 +22,8 @@ esac
 REDIS_HOST="${CLUSTER_NAME}-leader-0.${CLUSTER_NAME}-leader-headless.${CLUSTER_NAMESPACE}.svc"
 
 # Check the Total Leader Present in Redis Cluster using cr and redis-cli
-TOTAL_LEADERS=$(kubectl get redisclusters.redis.redis.opstreelabs.in ${CLUSTER_NAME} -n ${CLUSTER_NAMESPACE} -o jsonpath='{.spec.redisLeader.replicas}')
-MASTERS_IP=($(redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" -a "$REDIS_PASSWORD" cluster nodes --no-auth-warning | grep "master" | awk '{print $2}' | cut -d "@" -f1))
+TOTAL_LEADERS=$(kubectl get redisclusters.redis.redis.opstreelabs.in "${CLUSTER_NAME}" -n "${CLUSTER_NAMESPACE}" -o jsonpath='{.spec.redisLeader.replicas}')
+MASTERS_IP=$(redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" -a "$REDIS_PASSWORD" cluster nodes --no-auth-warning | grep "master" | awk '{print $2}' | cut -d "@" -f1)
 
 check_total_leaders_from_cr() {
   # Check if TOTAL_LEADERS is 0 or nil
@@ -44,9 +44,9 @@ check_total_masters_from_redis() {
 
 initialize_repository() {
     # To set the password of the repo you must pass it the env Variable  RESTIC_PASSWORD
-    if [ ! restic -r $RESTIC_REPOSITORY snapshots &>/dev/null ]; then
+    if ! restic -r "$RESTIC_REPOSITORY" snapshots &>/dev/null ; then
         echo "Initializing restic repository..."
-        restic init --repo $RESTIC_REPOSITORY
+        restic init --repo "$RESTIC_REPOSITORY"
     else
         echo "Restic repository already initialized."
     fi
@@ -55,7 +55,7 @@ initialize_repository() {
 
 perform_redis_backup(){
     # Start performing backup
-    for (( i=0; i<$TOTAL_LEADERS; i++ ))
+    for ((i = 0; i < TOTAL_LEADERS; i++))
     do  
         # Get the name of the Redis pod
         POD="${CLUSTER_NAME}-leader-${i}"
@@ -70,10 +70,10 @@ perform_redis_backup(){
         echo "Performing backup on Redis instance at $IP:$PORT"
 
         # Copy the file from the Redis instance to a local file
-        redis-cli -h $IP -p $PORT -a "$REDIS_PASSWORD" --rdb "/tmp/${POD}.rdb"
+        redis-cli -h "$IP" -p "$PORT" -a "$REDIS_PASSWORD" --rdb "/tmp/${POD}.rdb"
 
         # Upload the file to the selected backup destination using restic
-        restic -r $RESTIC_REPOSITORY backup "/tmp/${POD}.rdb" --host"${CLUSTER_NAME}_${CLUSTER_NAMESPACE}" --tag "${POD}" --tag "redis"
+        restic -r "$RESTIC_REPOSITORY" backup "/tmp/${POD}.rdb" --host"${CLUSTER_NAME}_${CLUSTER_NAMESPACE}" --tag "${POD}" --tag "redis"
 
         # Clean up the local file
         rm "/tmp/${POD}.rdb"
