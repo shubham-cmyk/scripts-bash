@@ -5,7 +5,6 @@ set -e  # Exit on error
 # Set default variables
 DEFAULT_CLUSTER_NAME="redis-cluster"
 DEFAULT_CLUSTER_NAMESPACE="default"
-
 DEFAULT_REDIS_PORT="6379"
 DEFAULT_REDIS_PASSWORD=""
 
@@ -21,7 +20,6 @@ REDIS_PORT=${REDIS_PORT:-$DEFAULT_REDIS_PORT}
 
 read -p "Enter Redis password [$DEFAULT_REDIS_PASSWORD]: " REDIS_PASSWORD
 REDIS_PASSWORD=${REDIS_PASSWORD:-$DEFAULT_REDIS_PASSWORD}
-
 
 # Prompt the user for their preferred backup destination (AWS S3, Azure Blob Storage, or Google Cloud Storage)
 echo "Select a backup destination:"
@@ -61,7 +59,7 @@ REDIS_HOST="${CLUSTER_NAME}-leader-0.${CLUSTER_NAME}-leader-headless.${CLUSTER_N
 
 # Check the Total Leader Present in Redis Cluster using cr and redis-cli
 TOTAL_LEADERS=$(kubectl get redisclusters.redis.redis.opstreelabs.in ${CLUSTER_NAME} -n ${CLUSTER_NAMESPACE} -o jsonpath='{.spec.redisLeader.replicas}')
-MASTERS_IP=($(redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" -a "$REDIS_PASSWORD" cluster nodes --no-auth-warning | grep "master" | awk '{print $2}' | cut -d "@" -f1))
+MASTERS_IP=($(redis-cli -h "$REDIS_HOST" -p "$REDIS_PORT" -a "$REDIS_PASSWORD" --no-auth-warning cluster nodes | grep "master" | awk '{print $2}' | cut -d "@" -f1))
 
 check_total_leaders_from_cr() {
   # Check if TOTAL_LEADERS is 0 or nil
@@ -82,40 +80,13 @@ check_total_masters_from_redis() {
 
 initialize_repository() {
     # To set the password of the repo you must pass it the env Variable  RESTIC_PASSWORD
-    if [ ! restic -r $RESTIC_REPOSITORY snapshots &>/dev/null ]; then
+    if  ! restic -r $RESTIC_REPOSITORY snapshots &>/dev/null ; then
         echo "Initializing restic repository..."
         restic init --repo $RESTIC_REPOSITORY
     else
         echo "Restic repository already initialized."
     fi
 }
-
-print_backup_status() {
-    local EXIT_CODE=$1
-    local IP=$2
-    local PORT=$3
-
-    # Check the exit status code and print a message
-    case $EXIT_CODE in
-    0)
-        echo "Backup for Redis instance at $IP:$PORT was successful (snapshot with all source files created)"
-        ;;
-    1)
-        echo "Backup for Redis instance at $IP:$PORT encountered a fatal error (no snapshot created)"
-        exit 1
-        ;;
-    3)
-        echo "Backup for Redis instance at $IP:$PORT encountered issues reading some source files (incomplete snapshot with remaining files created)"
-        exit 1
-        ;;
-    *)
-        echo "Backup for Redis instance at $IP:$PORT encountered an unknown error"
-        exit 1
-        ;;
-    esac
-}
-
-
 
 perform_redis_backup(){
     # Start performing backup
@@ -137,16 +108,12 @@ perform_redis_backup(){
         redis-cli -h $IP -p $PORT -a "$REDIS_PASSWORD" --rdb "/tmp/${POD}.rdb"
 
         # Upload the file to the selected backup destination using restic
-        restic -r $RESTIC_REPOSITORY backup "/tmp/${POD}.rdb" --host"${CLUSTER_NAME}_${CLUSTER_NAMESPACE}" --tag "${POD}" --tag "redis"
-        EXIT_CODE=$?
+        restic -r $RESTIC_REPOSITORY backup "/tmp/${POD}.rdb" --host "${CLUSTER_NAME}_${CLUSTER_NAMESPACE}" --tag "${POD}" --tag "redis"
 
         # Clean up the local file
         rm "/tmp/${POD}.rdb"
-
-        print_backup_status $EXIT_CODE $IP $PORT
     done
 }
-
 
 check_total_leaders_from_cr
 check_total_masters_from_redis
